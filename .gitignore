@@ -13,4 +13,5 @@ hs_err_pid*
 .idea/
 HibernateExample.ipr
 HibernateExample.iws
+HibernateExample.iml
 target/
