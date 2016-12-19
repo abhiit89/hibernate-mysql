@@ -46,4 +46,6 @@ public class Stock implements java.io.Serializable {
     {
         return "[Stock Name: "+this.stockName+"Stock Id: "+this.stockId+ "Stock Code: "+this.stockCode+"]";
     }
+
+
 }

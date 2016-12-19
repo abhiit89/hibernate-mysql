@@ -1,5 +1,8 @@
 package com.mkyong.common;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.ObjectWriter;
 import com.mkyong.persistence.HibernateUtil;
 import org.codehaus.jettison.json.JSONException;
 import org.codehaus.jettison.json.JSONObject;
@@ -22,8 +25,8 @@ public class Resource {
     @GET
     @Path("read")
     @Produces(MediaType.APPLICATION_JSON)
-    public Response readData() throws JSONException {
-        String apiReadString = "";
+    public Response readData() throws JSONException, JsonProcessingException {
+        StringBuilder apiReadString = new StringBuilder();
         JSONObject apiReadObject = new JSONObject();
         Session session1 = HibernateUtil.getSessionFactory().openSession();
         session1.beginTransaction();
@@ -31,15 +34,20 @@ public class Resource {
         Iterator itr = list.iterator();
         while(itr.hasNext())
         {
-            apiReadString.concat("{");
             Stock user = (Stock)itr.next();
-            apiReadString.concat(user.toString());
-            apiReadString.concat("}");
-            apiReadString.concat(",");
+            ObjectWriter ow = new ObjectMapper().writer().withDefaultPrettyPrinter();
+            String json = ow.writeValueAsString(user);
+            apiReadString.append(json);
+            apiReadString.append(",");
+        }
+        final int length = apiReadString.length();
+        if ( length > 0 ) {
+            // We remove the last character.
+            apiReadString.deleteCharAt( length - 1 );
         }
         session1.getTransaction().commit();
         session1.close();
-        apiReadObject.append("data", apiReadString);
+        apiReadObject.append("data", apiReadString.toString());
         return Response.ok() //200
                 .entity(apiReadObject.toString())
                 .header("Access-Control-Allow-Origin", "*")
