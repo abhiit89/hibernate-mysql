@@ -1,6 +1,7 @@
 REST API using Jersey, Hibernate, MySQL and Jetty
 
 Mysql Database setup
+
 1. create user name root with password mysql.
 2. create a database with name cis.
 3. create a table name stock with the command below
