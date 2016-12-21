@@ -20,13 +20,13 @@ public class Resource {
     @Path("read")
     @Produces(MediaType.APPLICATION_JSON)
     public Response readData() {
+        ArrayList<Object> data = new ArrayList<Object>();
         Session session1 = HibernateUtil.getSessionFactory().openSession();
         session1.beginTransaction();
         List list = session1.createQuery(" from Stock").list();
         Iterator itr = list.iterator();
-        ArrayList<Stock> data = new ArrayList<Stock>();
         while (itr.hasNext()) {
-            Stock user = (Stock) itr.next();
+            Object user = itr.next();
             data.add(user);
         }
         session1.getTransaction().commit();
