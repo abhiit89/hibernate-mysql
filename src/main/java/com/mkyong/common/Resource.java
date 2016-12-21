@@ -1,7 +1,8 @@
 package com.mkyong.common;
 
-import com.google.gson.Gson;
-
+import org.apache.derby.jdbc.EmbeddedDriver;
+import org.json.JSONArray;
+import org.json.JSONObject;
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
@@ -9,72 +10,33 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import java.sql.*;
 
-import org.json.JSONArray;
-import org.json.JSONObject;
-
-import java.util.ArrayList;
-
 @Path("api")
 public class Resource {
-    static final String JDBC_DRIVER = "com.mysql.jdbc.Driver";
-    static final String DB_NAME = "cis";
-    static final String DB_URL = "jdbc:mysql://localhost:3306/" + DB_NAME;
-    static final String TABLE_NAME = "stock";
-    //  Database credentials
-    static final String USER = "root";
-    static final String PASS = "mysql";
 
+    public static void main(String[] ars) {
+        new Resource().readData();
+        System.out.println("read the data");
+    }
+
+    static final String DB_NAME = "cis";
+    static final String USER = ";create=true;user=me;password=mine";
+    static final String DB_URL = "jdbc:derby:.\\test;create=true";
+    static final String TABLE_NAME = "STOCK";
+    private static Connection conn = null;
+    private static Statement stmt = null;
     @GET
     @Path("read")
     @Produces(MediaType.APPLICATION_JSON)
     public Response readData() {
-        JSONArray data = null;
-        //ArrayList<Object> data = new ArrayList<Object>();
-        Gson gson = new Gson();
-//        Session session1 = HibernateUtil.getSessionFactory().openSession();
-//        session1.beginTransaction();
-//        List list = session1.createQuery(" from Stock").list();
-//        Iterator itr = list.iterator();
-//        while (itr.hasNext()) {
-//            Object user = itr.next();
-//            data.add(user);
-//        }
-//        session1.getTransaction().commit();
-//        session1.close();
 
-        Connection conn = null;
-        Statement stmt = null;
-        try {
-            Class.forName(JDBC_DRIVER);
-            System.out.println("Connecting to database...");
-            conn = DriverManager.getConnection(DB_URL, USER, PASS);
-            System.out.println("Creating statement...");
-            stmt = conn.createStatement();
-            String sql;
-            sql = "SELECT * FROM " + TABLE_NAME;
-            ResultSet rs = stmt.executeQuery(sql);
-            data = convertToJSON(rs);
-            rs.close();
-            stmt.close();
-            conn.close();
-        } catch (SQLException se) {
-            se.printStackTrace();
-        } catch (Exception e) {
-            e.printStackTrace();
-        } finally {
-            try {
-                if (stmt != null)
-                    stmt.close();
-            } catch (SQLException se2) {
-            }
-            try {
-                if (conn != null)
-                    conn.close();
-            } catch (SQLException se) {
-                se.printStackTrace();
-            }
-        }
-
+        createConnection();
+        insertStocks("1", "4715", "KEANU");
+        insertStocks("2", "1234", "NEO");
+        insertStocks("3", "234", "BLADE");
+        insertStocks("6", "3456", "MATRIX");
+        fetchStocks();
+        shutdown();
+        JSONArray data = new JSONArray();
         return Response.ok()
                 .entity(data)
                 .header("Access-Control-Allow-Origin", "*")
@@ -96,5 +58,89 @@ public class Resource {
             }
         }
         return jsonArray;
+    }
+
+    private static void createConnection()
+    {
+        try
+        {
+            Class.forName(EmbeddedDriver.class.getName()).newInstance();
+            //Get a connection
+            conn = DriverManager.getConnection("jdbc:derby:.\\BD\\nombrebasededatos.db;create=true");
+        }
+        catch (Exception except)
+        {
+            except.printStackTrace();
+        }
+    }
+
+    private static void insertStocks(String STOCK_ID, String STOCK_CODE, String STOCK_NAME)
+    {
+        try
+        {
+            stmt = conn.createStatement();
+            stmt.execute("drop table STOCK");
+            stmt.execute("create table STOCK (ID varchar(10), Code varchar(10), Name varchar(10))");
+            stmt.execute("insert into " + TABLE_NAME + " values (" +
+                    STOCK_ID + ",'" + STOCK_CODE + "','" + STOCK_NAME +"')");
+            stmt.close();
+        }
+        catch (SQLException sqlExcept)
+        {
+            sqlExcept.printStackTrace();
+        }
+    }
+
+    private static void fetchStocks()
+    {
+        try
+        {
+            stmt = conn.createStatement();
+            ResultSet results = stmt.executeQuery("select * from " + TABLE_NAME);
+            ResultSetMetaData rsmd = results.getMetaData();
+            int numberCols = rsmd.getColumnCount();
+            for (int i=1; i<=numberCols; i++)
+            {
+                //print Column Names
+                System.out.print(rsmd.getColumnLabel(i)+"\t\t");
+            }
+
+            System.out.println("\n-------------------------------------------------");
+
+            while(results.next())
+            {
+                int id = results.getInt(1);
+                String restName = results.getString(2);
+                String cityName = results.getString(3);
+                System.out.println(id + "\t\t" + restName + "\t\t" + cityName);
+            }
+            results.close();
+            stmt.close();
+        }
+        catch (SQLException sqlExcept)
+        {
+            sqlExcept.printStackTrace();
+        }
+    }
+
+    private static void shutdown()
+    {
+        try
+        {
+            if (stmt != null)
+            {
+                stmt.close();
+            }
+            if (conn != null)
+            {
+                DriverManager.getConnection(DB_URL + ";shutdown=true");
+                conn.close();
+            }
+        }
+        catch (SQLException sqlExcept)
+        {
+
+        }
+
     }
 }
