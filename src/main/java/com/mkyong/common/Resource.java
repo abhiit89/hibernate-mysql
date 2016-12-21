@@ -3,7 +3,6 @@ package com.mkyong.common;
 import com.google.gson.Gson;
 import com.mkyong.persistence.HibernateUtil;
 import org.hibernate.Session;
-
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
@@ -21,6 +20,7 @@ public class Resource {
     @Produces(MediaType.APPLICATION_JSON)
     public Response readData() {
         ArrayList<Object> data = new ArrayList<Object>();
+        Gson gson = new Gson();
         Session session1 = HibernateUtil.getSessionFactory().openSession();
         session1.beginTransaction();
         List list = session1.createQuery(" from Stock").list();
@@ -31,7 +31,6 @@ public class Resource {
         }
         session1.getTransaction().commit();
         session1.close();
-        Gson gson = new Gson();
         return Response.ok()
                 .entity(gson.toJson(data))
                 .header("Access-Control-Allow-Origin", "*")
