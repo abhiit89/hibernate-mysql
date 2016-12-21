@@ -1,5 +1,6 @@
 package com.mkyong.common;
 
+import com.google.gson.Gson;
 import org.apache.derby.jdbc.EmbeddedDriver;
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -13,32 +14,40 @@ import java.sql.*;
 @Path("api")
 public class Resource {
 
-    public static void main(String[] ars) {
+    public static void main(String[] ars) throws Exception {
         new Resource().readData();
         System.out.println("read the data");
     }
 
-    static final String DB_NAME = "cis";
-    static final String USER = ";create=true;user=me;password=mine";
-    static final String DB_URL = "jdbc:derby:.\\test;create=true";
     static final String TABLE_NAME = "STOCK";
     private static Connection conn = null;
     private static Statement stmt = null;
+
     @GET
     @Path("read")
     @Produces(MediaType.APPLICATION_JSON)
-    public Response readData() {
+    public Response readData() throws Exception {
 
         createConnection();
+        try {
+            dropTable();
+        } catch (Exception ex) {
+            System.out.println("Drop table exception ignored");
+        }
+        createTable();
+
         insertStocks("1", "4715", "KEANU");
         insertStocks("2", "1234", "NEO");
         insertStocks("3", "234", "BLADE");
         insertStocks("6", "3456", "MATRIX");
-        fetchStocks();
-        shutdown();
         JSONArray data = new JSONArray();
+        stmt = conn.createStatement();
+        ResultSet results = stmt.executeQuery("select * from " + TABLE_NAME);
+        data = convertToJSON(results);
+        Gson gson = new Gson();
+        JSONObject json = new JSONObject();
         return Response.ok()
-                .entity(data)
+                .entity(data.toString())
                 .header("Access-Control-Allow-Origin", "*")
                 .header("Access-Control-Allow-Methods", "*")
                 .allow("OPTIONS").build();
@@ -48,99 +57,45 @@ public class Resource {
             throws Exception {
         JSONArray jsonArray = new JSONArray();
         while (resultSet.next()) {
+            JSONObject obj = new JSONObject();
             int columnCount = resultSet.getMetaData().getColumnCount();
             for (int i = 0; i < columnCount; i++) {
-                JSONObject obj = new JSONObject();
                 obj.put(resultSet.getMetaData().getColumnLabel(i + 1)
                         .toLowerCase(), resultSet.getObject(i + 1));
-                jsonArray.put(obj);
-                System.out.println(obj.toString());
             }
+            jsonArray.put(obj);
         }
         return jsonArray;
     }
 
-    private static void createConnection()
-    {
-        try
-        {
+    private static void createConnection() {
+        try {
             Class.forName(EmbeddedDriver.class.getName()).newInstance();
             //Get a connection
-            conn = DriverManager.getConnection("jdbc:derby:.\\BD\\nombrebasededatos.db;create=true");
-        }
-        catch (Exception except)
-        {
+            conn = DriverManager.getConnection("jdbc:derby:.\\cis.db;create=true");
+            stmt = conn.createStatement();
+        } catch (Exception except) {
             except.printStackTrace();
         }
     }
 
-    private static void insertStocks(String STOCK_ID, String STOCK_CODE, String STOCK_NAME)
-    {
-        try
-        {
-            stmt = conn.createStatement();
-            stmt.execute("drop table STOCK");
-            stmt.execute("create table STOCK (ID varchar(10), Code varchar(10), Name varchar(10))");
-            stmt.execute("insert into " + TABLE_NAME + " values (" +
-                    STOCK_ID + ",'" + STOCK_CODE + "','" + STOCK_NAME +"')");
-            stmt.close();
-        }
-        catch (SQLException sqlExcept)
-        {
+    private static void insertStocks(String STOCK_ID, String STOCK_CODE, String STOCK_NAME) {
+        try {
+            stmt.execute("insert into " + TABLE_NAME + " values ('" +
+                    STOCK_ID + "','" + STOCK_CODE + "','" + STOCK_NAME + "')");
+        } catch (SQLException sqlExcept) {
             sqlExcept.printStackTrace();
         }
     }
 
-    private static void fetchStocks()
-    {
-        try
-        {
-            stmt = conn.createStatement();
-            ResultSet results = stmt.executeQuery("select * from " + TABLE_NAME);
-            ResultSetMetaData rsmd = results.getMetaData();
-            int numberCols = rsmd.getColumnCount();
-            for (int i=1; i<=numberCols; i++)
-            {
-                //print Column Names
-                System.out.print(rsmd.getColumnLabel(i)+"\t\t");
-            }
-
-            System.out.println("\n-------------------------------------------------");
-
-            while(results.next())
-            {
-                int id = results.getInt(1);
-                String restName = results.getString(2);
-                String cityName = results.getString(3);
-                System.out.println(id + "\t\t" + restName + "\t\t" + cityName);
-            }
-            results.close();
-            stmt.close();
-        }
-        catch (SQLException sqlExcept)
-        {
-            sqlExcept.printStackTrace();
-        }
+    private static void createTable() throws SQLException {
+        stmt.execute("create table STOCK (STOCK_ID varchar(10), STOCK_CODE varchar(10), STOCK_NAME varchar(10))");
     }
 
-    private static void shutdown()
-    {
-        try
-        {
-            if (stmt != null)
-            {
-                stmt.close();
-            }
-            if (conn != null)
-            {
-                DriverManager.getConnection(DB_URL + ";shutdown=true");
-                conn.close();
-            }
-        }
-        catch (SQLException sqlExcept)
-        {
-
-        }
-
+    private static void dropTable() throws SQLException {
+        stmt.execute("drop table STOCK");
     }
+
+
+
 }
